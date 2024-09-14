@@ -102,13 +102,20 @@ int main(int argc, char** argv)
 		for (size_t thread_id = 0; thread_id < THREADS_AMOUNT; ++thread_id)
 		{
 			DWORD exit_code = 0;
-			GetExitCodeThread(threads.threads_handle[thread_id], &exit_code);
-			printf("Thread %lu (%lu) done with code %u\n", thread_id + 1, threads.threads_id[thread_id], exit_code);
-			CloseHandle(threads.threads_handle[thread_id]);
-		}
-		CloseHandle(stdout_mutex);
+			if (threads.threads_handle[thread_id] == NULL)
+				exit_code = -1;
+			else
+			{
+				GetExitCodeThread(threads.threads_handle[thread_id], &exit_code);
+				CloseHandle(threads.threads_handle[thread_id]);
+			}
 
-		puts("Enter 'x' to exit or 'r' to retry: ");
+			printf("Thread %llu (%lu) done with code %lu\n", thread_id + 1, threads.threads_id[thread_id], exit_code);
+		}
+		if (stdout_mutex != NULL)
+			CloseHandle(stdout_mutex);
+
+		puts("Enter 'x' to exit or 'r' to retry (default 'x'): ");
 		while (getchar() != '\n');
 
 	} while (getchar() == 'r');
