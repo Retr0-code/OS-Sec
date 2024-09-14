@@ -70,15 +70,15 @@ int main(int argc, char** argv)
 		thread_args	thread_arguments[THREADS_AMOUNT];
 	} threads_array;
 
-	// Get user input
-	printf("Enter %lu numbers representing time in milliseconds: ", THREADS_AMOUNT);
-	uint32_t threads_delay[THREADS_AMOUNT];
-	for (size_t thread_id = 0; thread_id < THREADS_AMOUNT; ++thread_id)
-		scanf_s("%ul", &threads_delay[thread_id]);
 
-	char user_option = 'x';
 	do
 	{
+		// Get user input
+		printf("Enter %lu numbers representing time in milliseconds: ", THREADS_AMOUNT);
+		uint32_t threads_delay[THREADS_AMOUNT];
+		for (size_t thread_id = 0; thread_id < THREADS_AMOUNT; ++thread_id)
+			scanf_s("%lu", &threads_delay[thread_id]);
+
 		stdout_mutex = CreateMutex(NULL, FALSE, NULL);
 
 		// Allocate new threads
