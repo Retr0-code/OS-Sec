@@ -75,19 +75,19 @@ int main()
 	} threads_array;
 
     // Initializing mutex
-	if (pthread_mutexattr_init(&stdout_mutex_attr) != 0)
+	if ((errno = pthread_mutexattr_init(&stdout_mutex_attr)) != 0)
     {
         perror("[-] Error initializing mutex context ");
         return -1;
     }
 
-    if (pthread_mutex_init(&stdout_mutex, &stdout_mutex_attr) != 0)
+    if ((errno = pthread_mutex_init(&stdout_mutex, &stdout_mutex_attr)) != 0)
     {
         perror("[-] Error initializing mutex ");
         return -1;
     }
 
-    if (pthread_attr_init(&threads_attr) != 0)
+    if ((errno = pthread_attr_init(&threads_attr)) != 0)
 	{
         perror("[-] Error initializing threads context ");
         return -1;
