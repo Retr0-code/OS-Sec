@@ -1,7 +1,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <Windows.h>
+#include <windows.h>
 
 #define THREADS_AMOUNT 5
 
@@ -27,7 +27,7 @@ void procedure(uint32_t thread_id, uint32_t millis)
 		break;
 
 	case WAIT_ABANDONED:
-		return;
+		ExitThread(ERROR_INVALID_HANDLE);
 	}
 	
 	// Function pseudo-code
@@ -45,7 +45,7 @@ void procedure(uint32_t thread_id, uint32_t millis)
 		break;
 
 	case WAIT_ABANDONED:
-		return;
+		ExitThread(ERROR_INVALID_HANDLE);
 	}
 
 	ExitThread(ERROR_SUCCESS);
