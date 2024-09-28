@@ -33,17 +33,14 @@ int procedure(uint32_t thread_id, uint32_t millis)
 
 
     // Function pseudo-code
-    struct timespec time_start, time_end;
-    clock_gettime(CLOCK_REALTIME, &time_start);
     usleep(millis * 1000);
-    clock_gettime(CLOCK_REALTIME, &time_end);
 
     // Wait STDOUT mutex to unlock to write a message
     error = pthread_mutex_lock(&stdout_mutex);
     if (error == EDEADLK)
         return -1;
 
-    printf("Thread %u finished after %u (actual time %lu) milliseconds\n", thread_id, millis, (time_end.tv_nsec - time_start.tv_nsec) / CLOCKS_PER_SEC);
+    printf("Thread %u finished after %u milliseconds\n", thread_id, millis);
     
     error = pthread_mutex_unlock(&stdout_mutex);
     if (error == EPERM)
@@ -63,8 +60,6 @@ void thread_procedure(thread_args* args)
 int main()
 {
     pthread_attr_t threads_attr;
-    struct timespec time_start, time_end;
-    clock_gettime(CLOCK_REALTIME, &time_start);
 
     // Struct of arrays for new threads
     typedef struct
@@ -117,11 +112,10 @@ int main()
         // Close resources handles
         for (size_t thread_id = 0; thread_id < THREADS_AMOUNT; ++thread_id)
         {
-            uint8_t *pthread_memory;
-            pthread_join(threads.threads_id[thread_id], NULL);
+            int *pthread_memory;
+            pthread_join(threads.threads_id[thread_id], &pthread_memory);
 
-            printf("Thread %lu (0x%016lx) done with code %s\n", thread_id + 1, threads.threads_id[thread_id], pthread_memory);
-            free(pthread_memory);
+            printf("Thread %lu (0x%016lx) done with code %i\n", thread_id + 1, threads.threads_id[thread_id], *pthread_memory);
         }
 
         puts("Enter 'x' to exit or 'r' to retry (default 'x'): ");
@@ -132,9 +126,6 @@ int main()
     pthread_mutex_destroy(&stdout_mutex);
     pthread_mutexattr_destroy(&stdout_mutex_attr);
     pthread_attr_destroy(&threads_attr);
-
-    clock_gettime(CLOCK_REALTIME, &time_end);
-    printf("Program completed within %lu\n", (time_end.tv_nsec - time_start.tv_nsec) / CLOCKS_PER_SEC);
 
     return 0;
 }
