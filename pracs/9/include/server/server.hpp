@@ -75,7 +75,7 @@ public:
     */
     std::thread::id listen(void);
 
-    void disconnect(Client* client_instanse);
+    void disconnect(uint32_t client_id);
 
     // Stops listening
     void Stop(void);
@@ -93,23 +93,23 @@ public:
     
     Server operator=(const Server&) = delete;
 
-    const std::shared_ptr<Client>& operator[](uint32_t id) const;
+    const std::shared_ptr<ClientInterface>& operator[](uint32_t id) const;
     
-    std::shared_ptr<Client>& operator[](uint32_t id);
-    
-    void operator<<(const std::vector<uint8_t>& data);
-    
-    void operator>>(const std::vector<uint8_t>& data);
+    std::shared_ptr<ClientInterface>& operator[](uint32_t id);
+
+    size_t clients_amount(void) const;
+
+    std::unordered_map<uint32_t, std::shared_ptr<ClientInterface>>& clients(void);
 
 // Private methods
 private:
     int listen_connection(void);
 
-    inline sockaddr* bind_ipv4(const char* lhost, in_port_t lport);
+    sockaddr* bind_ipv4(const char* lhost, in_port_t lport);
     
-    inline sockaddr* bind_ipv6(const char* lhost, in_port_t lport);
+    sockaddr* bind_ipv6(const char* lhost, in_port_t lport);
 
-    inline uint32_t get_scope_id(const char * interface_name);
+    uint32_t get_scope_id(const char * interface_name);
 
     void accept_client(void);
 
@@ -118,13 +118,11 @@ private:
     static bool _is_instantiated;       // Stores "true" if the object already exists (for singleton like implementation)
     bool _use_ipv6;                     // By default is false
     int _socket_descriptor;             // Descriptor of server socket
-    std::atomic_bool _stop_listening;   // State variable for listening thread
+    uint16_t _clients_max_amount;       // By default is 1000
     sockaddr_in _address_ipv4;          // Descriptor for IPv4 configuration
     sockaddr_in6 _address_ipv6;         // Descriptor for IPv6 configuration
-    uint16_t _clients_max_amount;       // By default is 1000
+    std::atomic_bool _stop_listening;   // State variable for listening thread
     std::thread _listener;              // Listener thread
-    std::unordered_map<uint32_t, std::shared_ptr<Client>> _clients;      // Pointers to clients
-    // std::vector<std::shared_ptr<Client>> _clients;      // Pointers to clients
-    // std::vector<std::future<void>> _clients_threads;    // Async clients list
+    std::unordered_map<uint32_t, std::shared_ptr<ClientInterface>> _clients;      // Pointers to clients
     static std::shared_ptr<Server> _server_instance;    // Singletone instance
 };

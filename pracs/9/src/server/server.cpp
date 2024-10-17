@@ -1,5 +1,7 @@
-#include "server.hpp"
-#include "color_codes.hpp"
+#include <iomanip>
+
+#include "server/server.hpp"
+#include "status.hpp"
 #include "network_exceptions.hpp"
 
 bool Server::_is_instantiated{false};
@@ -21,7 +23,7 @@ Server::Server(
     
     this->_socket_descriptor = ::socket(domain, SOCK_STREAM, 0);
     if (this->_socket_descriptor < 0)
-        throw socket_init_error(errno, this);
+        throw socket_init_error(errno);
 
     typedef sockaddr* (Server::*bind_ptr)(const char*, in_port_t);
     
@@ -32,12 +34,18 @@ Server::Server(
     std::invoke(bind_func, this, lhost, lport);
 
     this->_clients.reserve(this->_clients_max_amount);
+    
     Server::_is_instantiated = true;
 
 #if DEBUG
-    std::printf("%s IPv6\t\t%08x\t%04x\n", INFO, _address_ipv6.sin6_addr, _address_ipv6.sin6_port);
-    std::printf("%s IPv4\t\t%08x\t%04x\n", INFO, _address_ipv4.sin_addr, _address_ipv4.sin_port);
-    std::printf("%s Submited\t%s\t%04x\n", INFO, lhost, lport);
+    if (this->_use_ipv6)
+        std::cout << INFO << " IPv6:\t" << std::hex << std::setfill('0') <<
+        std::setw(32) << this->_address_ipv6.sin6_addr << ':' << std::setw(4) << this->_address_ipv6.sin6_port << std::endl;
+    else
+        std::cout << INFO << " IPv4:\t" << std::hex << std::setfill('0') <<
+        std::setw(32) << this->_address_ipv4.sin6_addr << ':' << std::setw(4) << this->_address_ipv4.sin6_port << std::endl;
+
+    std::cout << INFO << " Submited\t" << lhost<< ":" << lport << std::endl;
 #endif
 }
 
@@ -46,7 +54,7 @@ std::shared_ptr<Server> Server::instance(void)
     if (Server::_is_instantiated)
         return Server::_server_instance;
     
-    throw server_instance_error(nullptr);
+    throw server_instance_error();
 }
 
 std::shared_ptr<Server> Server::instance(
@@ -63,17 +71,16 @@ std::shared_ptr<Server> Server::instance(
 
 Server::~Server()
 {
-    this->_stop_listening = true;
-    this->_listener.join();
+    this->Stop();
     
     if (::shutdown(this->_socket_descriptor, SHUT_RDWR) != 0)
-        std::printf("%s Shutdown Server:\t%s\n", WARNING, std::strerror(errno));
+        std::cerr << WARNING << " Shutdown Server:\t\n" << std::strerror(errno) << std::endl;
 
     if (::close(this->_socket_descriptor) != 0)
-        std::printf("%s Close Server:\t%s\n", WARNING, std::strerror(errno));
+        std::cerr << WARNING << " Closing Server:\t\n" << std::strerror(errno) << std::endl;
 }
 
-inline sockaddr* Server::bind_ipv4(const char* lhost, in_port_t lport)
+sockaddr* Server::bind_ipv4(const char* lhost, in_port_t lport)
 {
     this->_address_ipv4.sin_family = AF_INET;
     this->_address_ipv4.sin_port = ::htons(lport);
@@ -85,12 +92,12 @@ inline sockaddr* Server::bind_ipv4(const char* lhost, in_port_t lport)
         reinterpret_cast<sockaddr*>(&this->_address_ipv4),
         sizeof(this->_address_ipv4)
         ) != 0)
-        throw socket_bind_error(errno, lhost, lport, this);
+        throw socket_bind_error(errno, lhost, lport);
 
     return reinterpret_cast<sockaddr*>(&this->_address_ipv4);
 }
 
-inline sockaddr* Server::bind_ipv6(const char* lhost, in_port_t lport)
+sockaddr* Server::bind_ipv6(const char* lhost, in_port_t lport)
 {
     std::string s_lhost {lhost};
     std::string ipv6 {s_lhost.substr(0, s_lhost.find_last_of('%'))};
@@ -109,18 +116,18 @@ inline sockaddr* Server::bind_ipv6(const char* lhost, in_port_t lport)
     catch (std::invalid_argument const& exception)
     {
 #if DEBUG
-        std::printf("%s Please use scope id rather then interface name\n", WARNING);
+        std::cerr << WARNING << " Please use scope id rather then interface name\n";
 #endif
         this->_address_ipv6.sin6_scope_id = this->get_scope_id(scope_id.c_str());
     }
 
     if (::bind(this->_socket_descriptor, reinterpret_cast<sockaddr*>(&_address_ipv6), sizeof(_address_ipv6)) != 0)
-        throw socket_bind_error(errno, lhost, lport, this);
+        throw socket_bind_error(errno, lhost, lport);
 
     return reinterpret_cast<sockaddr*>(&_address_ipv6);
 }
 
-inline uint32_t Server::get_scope_id(const char * interface_name)
+uint32_t Server::get_scope_id(const char * interface_name)
 {
     ifreq interface_descriptor;
     interface_descriptor.ifr_addr.sa_family = AF_INET;
@@ -143,7 +150,7 @@ int Server::listen_connection()
     int listen_status {0};
     this->_stop_listening = false;
 
-    std::cout << "Listening for new connections ...\n";
+    std::cout << INFO << " Listening for new connections ...\n";
 
     while (!this->_stop_listening)
     {
@@ -170,35 +177,40 @@ void Server::accept_client()
         throw socket_listen_error(errno);
 
     std::cout << SUCCESS << " Accepting new client " << new_client_socket - _socket_descriptor << std::endl;
-    std::shared_ptr<Client> new_client = std::make_shared<Client>(new_client_socket, Server::_server_instance);
+    std::shared_ptr<ClientInterface> new_client = std::make_shared<ClientInterface>(new_client_socket, Server::_server_instance);
 
-    // this->_clients.push_back(new_client);
     this->_clients.emplace(new_client->get_id(), new_client);
+    std::cout << INFO << " Connected new client " << new_client->get_id() << std::endl;
 }
 
-void Server::disconnect(Client* client_instanse)
+void Server::disconnect(uint32_t client_id)
 {
-    uint32_t client_id{client_instanse->get_id()};
-    this->_clients[client_id] = nullptr;
+    this->_clients.erase(client_id);
+    std::cout << INFO << " Client " << client_id << " has disconnected\n";
 }
 
 void Server::Stop(void)
 {
+    std::cout << INFO << " Stopping server's listener...\n";
     this->_stop_listening = true;
 }
 
-const std::shared_ptr<Client> &Server::operator[](uint32_t id) const
+const std::shared_ptr<ClientInterface> &Server::operator[](uint32_t id) const
 {
     return this->_clients.at(id);
 }
 
-std::shared_ptr<Client> &Server::operator[](uint32_t id)
+std::shared_ptr<ClientInterface> &Server::operator[](uint32_t id)
 {
     return this->_clients[id];
 }
 
-void Server::operator<<(const std::vector<uint8_t> &data)
+size_t Server::clients_amount(void) const
 {
-    for (auto& [id, client] : this->_clients)
-        *client << data;
+    return this->_clients.size();
+}
+
+std::unordered_map<uint32_t, std::shared_ptr<ClientInterface>> &Server::clients(void)
+{
+    return this->_clients;
 }

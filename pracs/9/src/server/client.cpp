@@ -1,68 +1,51 @@
-#include "client.hpp"
-#include "server.hpp"
-#include "color_codes.hpp"
+#include "status.hpp"
+#include "server/client.hpp"
+#include "server/server.hpp"
+#include "network_exceptions.hpp"
 
-uint32_t Client::_clients_amount{0};
-size_t Client::_buffer_size{DEFAULT_BUFFER_SIZE};
+uint32_t ClientInterface::_clients_amount{0};
 
-Client::Client(int sock_fd, std::shared_ptr<Server> const server_instanse) :
+ClientInterface::ClientInterface(int sock_fd, std::shared_ptr<Server> const server_instanse) :
     _socket_descriptor(sock_fd), _server_instanse(server_instanse), _client_id(_clients_amount++) {  }
 
-Client::~Client()
+ClientInterface::~ClientInterface()
 {
     if (::shutdown(this->_socket_descriptor, SHUT_RDWR) != 0)
         std::cerr << ERROR << "Shutdown Client:\t" << std::strerror(errno);
     
     if (::close(this->_socket_descriptor) != 0)
         std::cerr << ERROR << "Closing Client:\t" << std::strerror(errno);
+
+    this->_server_instanse->disconnect(this->_client_id);
 }
 
-void Client::set_buffer_size(size_t size)
-{
-    Client::_buffer_size = size;
-}
-
-uint32_t Client::get_id(void) const
+uint32_t ClientInterface::get_id(void) const
 {
     return this->_client_id;
 }
 
-void Client::close_connection(void)
+void ClientInterface::close_connection(void)
 {
-    this->_server_instanse->disconnect(this);
+    this->_server_instanse->disconnect(this->_client_id);
 }
 
-size_t Client::operator<<(const std::vector<uint8_t> &data)
+size_t ClientInterface::write(const uint8_t *data, size_t size)
 {
-    if (data.empty())
-        return 0;
-
-    size_t sent{::send(this->_socket_descriptor, data.data(), data.size(), 0)};
-    if (sent != data.size())
-        std::cerr << WARNING << "Client " << this->_client_id << " Failed to send all data of size "
-        << data.size() << " from "<< std::hex << data.data() << std::endl;
-
-    else if (sent == -1)
+    size_t sent{::write(this->_socket_descriptor, data, size)};
+    if (sent == -1)
     {
         sent = 0;
-        std::cerr << ERROR << "Client " << this->_client_id << " Failed to send data to client " << std::endl;
+        throw transmission_error(errno, this->_socket_descriptor, transmission_error::write);
     }
 
     return sent;
 }
 
-// const std::vector<uint8_t>& operator<<(Client& client)
-// {
-//     size_t received{::recv(this->_socket_descriptor, data.data(), Client::_buffer_size, 0)};
-//     if (received != data.size())
-//         std::cerr << WARNING << "Client " << this->_client_id << " Failed to receive all data of size "
-//         << data.size() << " from "<< std::hex << data.data() << std::endl;
+size_t ClientInterface::read(uint8_t *data, size_t size)
+{
+    size_t received{::read(this->_socket_descriptor, data, size)};
+    if (received == -1)
+        throw transmission_error(errno, this->_socket_descriptor, transmission_error::read);
 
-//     else if (received == -1)
-//     {
-//         received = 0;
-//         std::cerr << ERROR << "Client " << this->_client_id << " Failed to receive data from client " << std::endl;
-//     }
-
-//     return received;
-// }
+    return received;
+}
