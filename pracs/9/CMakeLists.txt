@@ -6,8 +6,9 @@ project(TCP-Server-Client VERSION 0.1)
 set(CMAKE_CXX_COMPILER "/usr/bin/g++-11")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++2a -g")
 
-if (USE_IPv6 EQUAL true)
+if (USE_IPv6)
     add_compile_definitions(USE_IPv6)
+    message(WARNING "Building using IPv6 addresses")
 endif()
 
 # Requirements

@@ -16,11 +16,11 @@ Client::Client(const char *lhost, in_port_t lport, bool use_ipv6)
         throw socket_init_error(errno);
 
     typedef sockaddr* (Client::*init_ptr)(const char*, in_port_t);
-    init_ptr bind_func = &Client::init_ipv4;
+    init_ptr init_func = &Client::init_ipv4;
     if (this->_use_ipv6)
-        bind_func = &Client::init_ipv6;
+        init_func = &Client::init_ipv6;
     
-    std::invoke(bind_func, this, lhost, lport);
+    std::invoke(init_func, this, lhost, lport);
 }
 
 Client::~Client()
@@ -31,10 +31,14 @@ Client::~Client()
 void Client::connect(void)
 {
     sockaddr* server{reinterpret_cast<sockaddr*>(&this->_address_ipv4)};
+    socklen_t socket_length{sizeof(this->_address_ipv4)};
     if (this->_use_ipv6)
+    {
         server = reinterpret_cast<sockaddr*>(&this->_address_ipv6);
+        socket_length = sizeof(this->_address_ipv6);
+    }
     
-    if (::connect(this->_socket_descriptor, server, sizeof(*server)) < 0)
+    if (::connect(this->_socket_descriptor, server, socket_length) < 0)
         throw socket_connect_error{errno};
 
     std::cout << SUCCESS << " Client successfully connected to the host\n";

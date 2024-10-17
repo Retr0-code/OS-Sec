@@ -38,6 +38,9 @@ int main()
             just_started = false;
             if ((*server)[0]->read(reinterpret_cast<uint8_t*>(msg), BUFFER_SIZE) != 0)
                 std::cout << "Client sent message: " << msg << '\n';
+
+            if (std::strncmp("close", msg, 6) == 0)
+                (*server)[0]->close_connection();
         }
     }
 
