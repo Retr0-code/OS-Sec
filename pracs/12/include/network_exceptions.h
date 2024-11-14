@@ -1,7 +1,7 @@
 #pragma once
-#include "status.hpp"
+#include "status.h"
 
-enum network_exceptions
+typedef enum
 {
     socket_error_success,
     socket_error_init,
@@ -9,5 +9,6 @@ enum network_exceptions
     socket_error_listen,
     socket_error_domain,
     socket_error_connect,
-    socket_error_transmission
-};
+    socket_error_transmission,
+    socket_error_invalid_args
+} network_exceptions;

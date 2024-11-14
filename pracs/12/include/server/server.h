@@ -13,12 +13,12 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
 // Own headers
 #include "server/client.h"
-#include "hashtable/hashtable.h"
 
 /*
     Server class provided to ditribute threads to remote clients.
@@ -29,11 +29,12 @@
 typedef struct
 {
     uint16_t        _clients_max_amount;    // By default is 1000
+    uint16_t        _clients_amount;        // Stores active clients amount
     int             _socket_descriptor;     // Descriptor of server socket
     thrd_t          _listener;              // Listener thread
     atomic_int      _stop_listening;        // State variable for listening thread
-    sockaddr        _address;               // Address descriptor
-    hashtable_t     _clients;               // Pointers to clients
+    struct sockaddr *_address;              // Address descriptor
+    ClientInterface **_clients;             // Pointers to clients
 } Server;
 
 /*  Creates Server instanse with parameters:
@@ -49,29 +50,25 @@ typedef struct
      * socket_init_error
      * socket_bind_error
 */
-    int Server_create(
-        Server *server,
-        const char* lhost,
-        in_port_t lport,
-        bool use_ipv6 = false,
-        uint16_t clients_max_amount = 100
-    );
+int Server_create(
+    Server *server,
+    const char* lhost,
+    in_port_t lport,
+    int use_ipv6,
+    uint16_t clients_max_amount
+);
     
-    void Server_close(Server *server);
+void Server_close(Server *server);
 
-    /*  Runs detached thread that accepts new clientreturns its id
+void Server_stop(Server *server);
 
-        Returns thread's id
+/*  Runs detached thread that accepts new clientreturns its id
 
-        Exceptions:
-         * all exceptions of "thread( Function&& f, Args&&... args )" constructor
-    */
-    thrd_t Server_listen(void);
+    Returns thread's errors
 
-    void Server_disconnect(uint32_t client_id);
-    
-    ClientInterface* Server_get(uint32_t id);
+    Exceptions:
+    * all exceptions of "thrd_create( Function&& f, Args&&... args )" constructor
+*/
+int Server_listen(Server *server);
 
-    size_t Server_clients_amount(void);
-
-    const hashtable* Server_clients(void);
+void Server_disconnect(Server *server, uint32_t client_id);
