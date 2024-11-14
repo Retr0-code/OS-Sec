@@ -12,6 +12,7 @@ set(DIR_SOURCE "src")
 set(SERVER_SRC
     ${DIR_SOURCE}/server/server.c
     ${DIR_SOURCE}/server/client.c
+    ${DIR_SOURCE}/http_server/http_server.c
 )
 
 set(SERVER_HEAD
@@ -19,11 +20,12 @@ set(SERVER_HEAD
     ${DIR_INCLUDE}/network_exceptions.h
     ${DIR_INCLUDE}/server/server.h
     ${DIR_INCLUDE}/server/client.h
+    ${DIR_INCLUDE}/http_server/http_server.h
 )
 
 add_library(server STATIC ${SERVER_SRC})
 target_include_directories(server PUBLIC ${PROJECT_SOURCE_DIR}/include)
-add_executable(server_example ${DIR_SOURCE}/server/example.c)
+add_executable(server_example ${DIR_SOURCE}/main.c)
 
 target_include_directories(server_example PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(server_example server)
