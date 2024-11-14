@@ -4,7 +4,7 @@ project(HTTP-Server VERSION 0.1)
 
 # Configure compiler
 set(CMAKE_CXX_COMPILER "/usr/bin/gcc-11")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c17 -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c17 -ggdb")
 set(DIR_INCLUDE "include")
 set(DIR_SOURCE "src")
 
@@ -15,8 +15,8 @@ set(SERVER_SRC
 )
 
 set(SERVER_HEAD
-    ${DIR_INCLUDE}/network_exceptions.h
     ${DIR_INCLUDE}/status.h
+    ${DIR_INCLUDE}/network_exceptions.h
     ${DIR_INCLUDE}/server/server.h
     ${DIR_INCLUDE}/server/client.h
 )

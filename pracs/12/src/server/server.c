@@ -1,8 +1,9 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#include "server/server.h"
+#include "status.h"
 #include "server/client.h"
+#include "server/server.h"
 #include "network_exceptions.h"
 
 #define MAX_IPV6_LEN    30
@@ -43,12 +44,15 @@ int Server_create(
     }
 
     server->_clients_max_amount = clients_max_amount;
-    if (server->_socket_descriptor = socket(domain, SOCK_STREAM, 0) == -1)
+    server->_socket_descriptor = socket(domain, SOCK_STREAM, 0);
+    if (server->_socket_descriptor == -1)
         return socket_error_init;
 
-    (bind_func)(server, lhost, lport);
+    if ((bind_func)(server, lhost, lport) != socket_error_success)
+        return socket_error_bind;
 
     server->_clients = malloc(sizeof(ClientInterface) * server->_clients_max_amount);
+    return socket_error_success;
 }
 
 void Server_close(Server *server)
@@ -66,6 +70,7 @@ void Server_close(Server *server)
             ClientInterface_close_connection(server->_clients[i]);
 
     free(server->_clients);
+    free(server->_address);
     free(server);
 }
 
@@ -75,10 +80,7 @@ static int Server_bind_ipv4(Server *server, const char *lhost, in_port_t lport)
     address_ipv4->sin_family = AF_INET;
     address_ipv4->sin_port = htons(lport);
     if (inet_pton(AF_INET, lhost, &address_ipv4->sin_addr) != 1)
-    {
-        errno = EINVAL;
-        return -1;
-    }
+        return socket_error_invalid_args;
 
     if (bind(server->_socket_descriptor, address_ipv4, sizeof(*address_ipv4)) != 0)
         return socket_error_bind;
@@ -164,6 +166,8 @@ static int Server_accept_client(Server *server)
 
     server->_clients[new_client->_id] = new_client;
     printf("%s Connected new client %i\n", INFO, new_client->_id);
+
+    ++server->_clients_amount;
 
     return socket_error_success;
 }

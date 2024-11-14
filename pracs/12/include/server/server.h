@@ -18,7 +18,9 @@
 #include <netinet/in.h>
 
 // Own headers
+#include "status.h"
 #include "server/client.h"
+#include "network_exceptions.h"
 
 /*
     Server class provided to ditribute threads to remote clients.
@@ -26,15 +28,15 @@
     try to create one more you would get exception
     "server_instance_error" with address of object provided.
 */
-typedef struct
+typedef struct Server
 {
-    uint16_t        _clients_max_amount;    // By default is 1000
-    uint16_t        _clients_amount;        // Stores active clients amount
-    int             _socket_descriptor;     // Descriptor of server socket
-    thrd_t          _listener;              // Listener thread
-    atomic_int      _stop_listening;        // State variable for listening thread
-    struct sockaddr *_address;              // Address descriptor
-    ClientInterface **_clients;             // Pointers to clients
+    uint16_t                _clients_max_amount;    // By default is 1000
+    uint16_t                _clients_amount;        // Stores active clients amount
+    int                     _socket_descriptor;     // Descriptor of server socket
+    thrd_t                  _listener;              // Listener thread
+    atomic_int              _stop_listening;        // State variable for listening thread
+    struct sockaddr         *_address;              // Address descriptor
+    struct ClientInterface  **_clients;             // Pointers to clients
 } Server;
 
 /*  Creates Server instanse with parameters:
