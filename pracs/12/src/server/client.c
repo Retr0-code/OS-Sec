@@ -15,9 +15,9 @@ int ClientInterface_create(ClientInterface *client, int sock_fd, Server *const s
         return socket_error_invalid_args;
     }
     
-    Server *client_server = client->_server;
+    Server **client_server = &client->_server;
     client->_socket_descriptor = sock_fd;
-    client_server = server;
+    *client_server = server;
     client->_id = _clients_amount++;
     return socket_error_success;
 }

@@ -174,7 +174,7 @@ static int Server_accept_client(Server *server)
 
 void Server_disconnect(Server *server, uint32_t client_id)
 {
-    ClientInterface_close_connection(server->_clients[client_id]);
+    free(server->_clients[client_id]);
     server->_clients[client_id] = NULL;
     // memset(&server->_clients[client_id], 0, sizeof(ClientInterface));
     printf("%s Client %i has disconnected\n", INFO, client_id);
