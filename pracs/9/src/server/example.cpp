@@ -36,6 +36,7 @@ int main()
         if (server->clients_amount() > 0)
         {
             just_started = false;
+            memset(msg, 0, BUFFER_SIZE);
             if ((*server)[0]->read(reinterpret_cast<uint8_t*>(msg), BUFFER_SIZE) != 0)
                 std::cout << "Client sent message: " << msg << '\n';
 
