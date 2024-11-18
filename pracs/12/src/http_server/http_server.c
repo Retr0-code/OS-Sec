@@ -149,8 +149,16 @@ void HTTPServer_delete(HTTPServer *http)
     }
 
     http->listen = 0;
-    Server_close(&http->tcp_server);
+    Server_stop(&http->tcp_server);
+
+    if (shutdown(http->tcp_server._socket_descriptor, SHUT_RDWR) != 0)
+        fprintf(stderr, "%s Shutdown Server:\t%s", WARNING, strerror(errno));
+
+    if (close(http->tcp_server._socket_descriptor) != 0)
+        fprintf(stderr, "%s Closing Server:\t%s", WARNING, strerror(errno));
+
     LinkedList_delete(http->handles, &HTTPHandle_delete);
+    free(http);
 }
 
 int HTTPRequest_parse(HTTPRequest *request, const char *buffer)
@@ -168,7 +176,7 @@ int HTTPRequest_parse(HTTPRequest *request, const char *buffer)
     buffer += substr_len + 1;
 
     for (size_t i = 0; i < sizeof (conversion) / sizeof (*conversion);  ++i) {
-        if (strcmp(temp, conversion[i].str) == 0) {
+        if (strncmp(temp, conversion[i].str, substr_len) == 0) {
             request->method = conversion[i].val;
             break;
         }
@@ -177,14 +185,14 @@ int HTTPRequest_parse(HTTPRequest *request, const char *buffer)
 
     // URL parsing
     substr_len = strcspn(buffer, " ");
-    request->url = malloc(substr_len);
+    request->url = malloc(substr_len + 1);
     strncpy(request->url, buffer, substr_len);
     request->url[substr_len] = 0;
     buffer += substr_len + 1;
 
     // HTTP versioin parsing
     substr_len = strcspn(buffer, "\r\n");
-    request->http_version = malloc(substr_len);
+    request->http_version = malloc(substr_len + 1);
     strncpy(request->http_version, buffer, substr_len);
     request->http_version[substr_len] = 0;
     buffer += substr_len + 2;
@@ -195,7 +203,7 @@ int HTTPRequest_parse(HTTPRequest *request, const char *buffer)
         *new_header = malloc(sizeof(HTTPHeader));
         
         substr_len = strcspn(buffer, ":");
-        (*new_header)->key = malloc(substr_len);
+        (*new_header)->key = malloc(substr_len + 1);
         
         memset(temp, 0, substr_len);
         strncpy((*new_header)->key, buffer, substr_len);
@@ -203,7 +211,7 @@ int HTTPRequest_parse(HTTPRequest *request, const char *buffer)
         buffer += substr_len + 2;
 
         substr_len = strcspn(buffer, "\r\n");
-        (*new_header)->value = malloc(substr_len);
+        (*new_header)->value = malloc(substr_len + 1);
         
         memset(temp, 0, substr_len);
         strncpy((*new_header)->value, buffer, substr_len);
@@ -235,13 +243,14 @@ int HTTPRequest_parse_get_args(const HTTPRequest *request, int *argc, char ***ar
     size_t req_len = strlen(request->url);
     if (req_len - substr_len <= 1) {
         *argv = malloc(sizeof(char *));
-        **argv = malloc(substr_len);
+        **argv = malloc(substr_len + 1);
         strncpy(**argv, request->url, substr_len);
+        (**argv)[substr_len] = 0;
         return 0;
     }
     *argc = 2;
-    char *url_decoded = malloc(req_len);
-    memset(url_decoded, 0, req_len);
+    char *url_decoded = malloc(req_len + 1);
+    memset(url_decoded, 0, req_len + 1);
     urldecode(url_decoded, req_len, request->url);
     
     const char *param_str = url_decoded + substr_len;
@@ -249,7 +258,7 @@ int HTTPRequest_parse_get_args(const HTTPRequest *request, int *argc, char ***ar
         *argc += param_str[i] == '&';
 
     *argv = malloc(sizeof(char *) * (*argc));
-    **argv = malloc(substr_len);
+    **argv = malloc(substr_len + 1);
     strncpy(**argv, url_decoded, substr_len);
     (**argv)[substr_len] = 0;
     for (int i = 1; *argc > i; ++i) {
@@ -257,7 +266,7 @@ int HTTPRequest_parse_get_args(const HTTPRequest *request, int *argc, char ***ar
         
         substr_len = strcspn(param_str, "&");
 
-        (*argv)[i] = malloc(substr_len + 2);
+        (*argv)[i] = malloc(substr_len + 3);
         strncpy((*argv)[i] + 2, param_str, substr_len);
         (*argv)[i][0] = '-';
         (*argv)[i][1] = '-';
@@ -419,7 +428,6 @@ void HTTPHeader_delete(HTTPHeader *header_list)
 void HTTPHandle_delete(HTTPHandle *handle)
 {
     LinkedList_delete(handle->handlers, &HTTPHandlerList_delete);
-    free(handle->path);
     free(handle);
 }
 

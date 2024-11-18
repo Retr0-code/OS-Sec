@@ -83,11 +83,15 @@ static int Server_bind_ipv4(Server *server, const char *lhost, in_port_t lport)
     struct sockaddr_in *address_ipv4 = malloc(sizeof(struct sockaddr_in));
     address_ipv4->sin_family = AF_INET;
     address_ipv4->sin_port = htons(lport);
-    if (inet_pton(AF_INET, lhost, &address_ipv4->sin_addr) != 1)
+    if (inet_pton(AF_INET, lhost, &address_ipv4->sin_addr) != 1) {
+        free(address_ipv4);
         return socket_error_invalid_args;
+    }
 
-    if (bind(server->_socket_descriptor, address_ipv4, sizeof(*address_ipv4)) != 0)
+    if (bind(server->_socket_descriptor, address_ipv4, sizeof(*address_ipv4)) != 0) {
+        free(address_ipv4);
         return socket_error_bind;
+    }
 
     server->_address = address_ipv4;
     return socket_error_success;
@@ -104,14 +108,18 @@ static int Server_bind_ipv6(Server *server, const char* lhost, in_port_t lport)
     address_ipv6->sin6_family = AF_INET6;
     address_ipv6->sin6_port = htons(lport);
 
-    if (inet_pton(AF_INET6, ipv6, &address_ipv6->sin6_addr) != 1)
+    if (inet_pton(AF_INET6, ipv6, &address_ipv6->sin6_addr) != 1) {
+        free(address_ipv6);
         return socket_error_invalid_args;
+    }
 
     address_ipv6->sin6_scope_id = atoi(scope_id);
     address_ipv6->sin6_scope_id = Server_get_scope_id(server, scope_id);
 
-    if (bind(server->_socket_descriptor, (struct sockaddr*)address_ipv6, sizeof(*address_ipv6)) != 0)
+    if (bind(server->_socket_descriptor, (struct sockaddr*)address_ipv6, sizeof(*address_ipv6)) != 0) {
+        free(address_ipv6);
         return socket_error_bind;
+    }
 
     server->_address = address_ipv6;
     return socket_error_success;

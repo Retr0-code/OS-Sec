@@ -1,6 +1,8 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include "status.h"
 #include "http_server/http_server.h"
@@ -14,15 +16,18 @@ int handler_get_emblem(const HTTPRequest *request, HTTPResponse *response)
     response->version = "HTTP/1.1";
     response->headers = NULL;
 
-    size_t emblem_size;
     FILE *emblem_file = fopen(EMBLEM_PATH, "r");
+    if (emblem_file == NULL) {
+        HTTPResponse_error(response, 500, "Internal server error");
+        return response->status;
+    }
     fseek(emblem_file, 0, SEEK_END);
-    emblem_size = ftell(emblem_file);
+    size_t emblem_size = ftell(emblem_file);
     fseek(emblem_file, 0, SEEK_SET);
 
     response->body = malloc(emblem_size);
     if (fread(response->body, emblem_size, 1, emblem_file) != 1) {
-        response->status = 500;
+        HTTPResponse_error(response, 500, "Internal server error");
         fclose(emblem_file);
         return response->status;
     }
@@ -44,7 +49,6 @@ int handler_get_root(const HTTPRequest *request, HTTPResponse *response)
     char **argv;
     HTTPRequest_parse_get_args(request, &argc, &argv);
 
-    // if (argc != 7) {
     if (argc != 4) {
         HTTPRequest_delete_args(argc, argv);
         HTTPResponse_error(response, 400, "Bad Request");
@@ -88,10 +92,13 @@ int handler_get_root(const HTTPRequest *request, HTTPResponse *response)
         return response->status;
     }
 
-    size_t template_size;
     FILE *template_file = fopen(ROOT_TEMPLATE_PATH, "r");
+    if (template_file == NULL) {
+        HTTPResponse_error(response, 500, "Internal server error");
+        return response->status;
+    }
     fseek(template_file, 0, SEEK_END);
-    template_size = ftell(template_file);
+    size_t template_size = ftell(template_file);
     fseek(template_file, 0, SEEK_SET);
 
     size_t total_size = template_size + strlen(request->url);
