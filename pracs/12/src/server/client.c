@@ -36,6 +36,7 @@ void ClientInterface_close(ClientInterface *client)
 
 void ClientInterface_close_connection(ClientInterface *client)
 {
+    ClientInterface_close(client);
     Server_disconnect(client->_server, client->_id);
     --_clients_amount;
 }

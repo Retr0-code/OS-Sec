@@ -5,9 +5,7 @@
 #include "network_exceptions.h"
 
 #define HTTP_REQ_BUF_SIZE       4096
-#define HTTP_METHOD_MAX_LEN     12
-#define HTTP_URI_MAX_LEN        8096
-#define HTTP_VERSION_MAX_LEN    12
+#define HTTP_RES_BUF_LEN        4096
 
 typedef enum
 {
@@ -47,10 +45,15 @@ typedef struct HTTPRequest
 
 typedef struct HTTPResponse
 {
-    int test;
+    uint16_t    status;
+    uint32_t    content_length;
+    const char  *version;
+    HTTPHeader  *headers;
+    char        *body;
 } HTTPResponse;
 
-typedef HTTPResponse *(*Handler)(HTTPRequest*);
+// typedef HTTPResponse *(*Handler)(HTTPRequest*);
+typedef int (*Handler)(const HTTPRequest *, HTTPResponse *);
 
 typedef struct HandlerList
 {
@@ -91,7 +94,11 @@ int HTTPRequest_parse(HTTPRequest *request, const char *buffer);
 
 int HTTPRequest_clean(HTTPRequest *request);
 
+void HTTPHeader_add(HTTPHeader **header, size_t headers_amount, ...);
+
 int HTTPResponse_send(ClientInterface *client, const HTTPResponse *response);
+
+void HTTPResponse_clean(HTTPResponse *response);
 
 void HTTPHeader_delete(HTTPHeader *header_list);
 

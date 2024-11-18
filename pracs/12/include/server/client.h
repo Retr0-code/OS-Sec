@@ -18,4 +18,6 @@ typedef struct ClientInterface
 
 int ClientInterface_create(ClientInterface *client, int sock_fd, struct Server *const server);
 
+void ClientInterface_close(ClientInterface *client);
+
 void ClientInterface_close_connection(ClientInterface *client);

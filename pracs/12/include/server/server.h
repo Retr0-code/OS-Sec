@@ -71,6 +71,10 @@ void Server_stop(Server *server);
     Exceptions:
     * all exceptions of "thrd_create( Function&& f, Args&&... args )" constructor
 */
-int Server_listen(Server *server);
+// int Server_listen(Server *server);
+
+int Server_listen_connection(Server *server, struct ClientInterface *client);
+
+int Server_accept_client(Server *server, struct ClientInterface *client);
 
 void Server_disconnect(Server *server, uint32_t client_id);

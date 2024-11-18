@@ -4,9 +4,32 @@
 #include "status.h"
 #include "http_server/http_server.h"
 
-HTTPResponse *get_image_handler(HTTPRequest *request)
+#define EMBLEM_PATH "./static/images/emblem.jpeg"
+
+int handler_get_emblem(const HTTPRequest *request, HTTPResponse *response)
 {
-    return NULL; 
+    response->status = 200;
+    response->version = "HTTP/1.1";
+    response->headers = NULL;
+
+    size_t emblem_size;
+    FILE *emblem_file = fopen(EMBLEM_PATH, "r");
+    fseek(emblem_file, 0, SEEK_END);
+    emblem_size = ftell(emblem_file);
+    fseek(emblem_file, 0, SEEK_SET);
+
+    response->body = malloc(emblem_size);
+    if (fread(response->body, emblem_size, 1, emblem_file) != 1) {
+        response->status = 500;
+        fclose(emblem_file);
+        return response->status;
+    }
+    fclose(emblem_file);
+    response->content_length = emblem_size;
+
+    HTTPHeader_add(&response->headers, 1, "Content-Type", "image/jpeg");
+
+    return response->status;
 }
 
 int main(int argc, char **argv)
@@ -26,20 +49,14 @@ int main(int argc, char **argv)
     }
 
     HTTPServer *http = malloc(sizeof(HTTPServer));
-    HTTPServer_create(http, host, port, 0, 100);
-    HTTPServer_add_handle(http, "/image", 1, http_method_get, &get_image_handler);
-    HTTPServer_process(http);
+    if (HTTPServer_create(http, host, port, 0, 100)) {
+        free(http);
+        fprintf(stderr, "%s Unable to start HTTP server:\n%s\n", ERROR, strerror(errno));
+        return -1;
+    }
 
-    // char buffer[] = "POST /en-US/docs/Web/HTTP/Messages HTTP/2\r\n"
-    //                 "Host: developer.mozilla.org\r\n"
-    //                 "User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0\r\n"
-    //                 "\r\n"
-    //                 "test=lol";
-    // HTTPRequest request;
-    // HTTPRequest_parse(&request, buffer);
-    
-    // // Delets all contents of request
-    // HTTPRequest_clean(&request);
+    HTTPServer_add_handle(http, "/emblem", 1, http_method_get, &handler_get_emblem);
+    HTTPServer_process(http);
     
     return 0;
 }

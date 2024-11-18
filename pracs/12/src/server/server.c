@@ -12,12 +12,12 @@ static int Server_bind_ipv4(Server *server, const char* lhost, in_port_t lport);
 
 static int Server_bind_ipv6(Server *server, const char* lhost, in_port_t lport);
 
-static int Server_listen_connection(Server *server);
+// static int Server_listen_connection(Server *server);
 
 static uint32_t Server_get_scope_id(const Server *server, const char * interface_name);
 
 
-static int Server_accept_client(Server *server);
+// static int Server_accept_client(Server *server);
 
 int Server_create(
     Server *server,
@@ -125,16 +125,17 @@ static uint32_t Server_get_scope_id(const Server *server, const char * interface
 }
 
 // Returns thread errors
-int Server_listen(Server *server)
-{
-    int status = thrd_create(&server->_listener, &Server_listen_connection, server);
-    if (status == thrd_success)
-        status = thrd_detach(server->_listener);
+// int Server_listen(Server *server)
+// {
+//     int status = thrd_create(&server->_listener, &Server_listen_connection, server);
+//     if (status == thrd_success)
+//         status = thrd_detach(server->_listener);
 
-    return status;
-}
+//     return status;
+// }
 
-static int Server_listen_connection(Server *server)
+// static int Server_listen_connection(Server *server, ClientInterface *client)
+int Server_listen_connection(Server *server, ClientInterface *client)
 {
     int listen_status = 0;
     server->_stop_listening = 0;
@@ -146,14 +147,15 @@ static int Server_listen_connection(Server *server)
         if (listen_status < 0)
             return socket_error_listen;
 
-        if (server->_clients_amount <= server->_clients_max_amount && listen_status == 0)
-            Server_accept_client(server);
+        // if (server->_clients_amount <= server->_clients_max_amount && listen_status == 0)
+        server->_stop_listening = !Server_accept_client(server, client);
     }
 
-    return listen_status;
+    return socket_error_success;
 }
 
-static int Server_accept_client(Server *server)
+// static int Server_accept_client(Server *server, ClientInterface *client)
+int Server_accept_client(Server *server, ClientInterface *client)
 {
     socklen_t socket_length = sizeof(struct sockaddr);
     int new_client_socket = accept(server->_socket_descriptor, server->_address, &socket_length);
@@ -161,21 +163,21 @@ static int Server_accept_client(Server *server)
         return socket_error_listen;
 
     printf("%s Accepting new client %i\n", SUCCESS, new_client_socket - server->_socket_descriptor);
-    ClientInterface *new_client = malloc(sizeof(ClientInterface));
-    ClientInterface_create(new_client, new_client_socket, server);
+    // ClientInterface *new_client = malloc(sizeof(ClientInterface));
+    ClientInterface_create(client, new_client_socket, server);
 
-    server->_clients[new_client->_id] = new_client;
-    printf("%s Connected new client %i\n", INFO, new_client->_id);
+    // server->_clients[new_client->_id] = new_client;
+    // printf("%s Connected new client %i\n", INFO, new_client->_id);
 
-    ++server->_clients_amount;
+    // ++server->_clients_amount;
 
     return socket_error_success;
 }
 
 void Server_disconnect(Server *server, uint32_t client_id)
 {
-    free(server->_clients[client_id]);
-    server->_clients[client_id] = NULL;
+    // free(server->_clients[client_id]);
+    // server->_clients[client_id] = NULL;
     // memset(&server->_clients[client_id], 0, sizeof(ClientInterface));
     printf("%s Client %i has disconnected\n", INFO, client_id);
     --server->_clients_amount;
