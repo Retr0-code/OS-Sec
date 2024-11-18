@@ -92,11 +92,17 @@ void HTTPServer_delete(HTTPServer *http);
 
 int HTTPRequest_parse(HTTPRequest *request, const char *buffer);
 
+int HTTPRequest_parse_get_args(const HTTPRequest *request, int *argc, char ***argv);
+
+void HTTPRequest_delete_args(int argc, char **argv);
+
 int HTTPRequest_clean(HTTPRequest *request);
 
 void HTTPHeader_add(HTTPHeader **header, size_t headers_amount, ...);
 
 int HTTPResponse_send(ClientInterface *client, const HTTPResponse *response);
+
+void HTTPResponse_error(HTTPResponse *response, uint16_t status, const char *message);
 
 void HTTPResponse_clean(HTTPResponse *response);
 

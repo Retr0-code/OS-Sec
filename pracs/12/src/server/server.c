@@ -69,8 +69,12 @@ void Server_close(Server *server)
         if (server->_clients[i] != NULL)
             ClientInterface_close_connection(server->_clients[i]);
 
-    free(server->_clients);
-    free(server->_address);
+    if (server->_clients != NULL)
+        free(server->_clients);
+    
+    if (server->_address != NULL)
+        free(server->_address);
+    
     free(server);
 }
 

@@ -18,8 +18,6 @@ static void LinkedList_delete(LinkedList *ll, Deleter *deleter);
 
 static LinkedList *LinkedList_last(const LinkedList *ll);
 
-static void HTTPResponse_get_404(HTTPResponse *response);
-
 static void HTTPHeader_create(HTTPHeader *header, const char *key, const char *value);
 
 static HTTPServer *http_server_signal = NULL;
@@ -48,7 +46,6 @@ int HTTPServer_create(
     action_segv->sa_sigaction = &HTTPServer_signal_stop;
     sigaction(SIGSEGV, action_segv, NULL);
     signal(SIGINT, &HTTPServer_signal_stop);
-    // signal(SIGSEGV, &HTTPServer_signal_stop);
 
     return socket_error_success;
 }
@@ -96,7 +93,7 @@ int HTTPServer_process(HTTPServer *http)
     HTTPResponse response;
     ClientInterface client;
     http->listen = 1;
-    int status = 1;
+    int status = 404;
     while (http->listen) {
         if (Server_listen_connection(&http->tcp_server, &client) != socket_error_success)
             continue;
@@ -130,7 +127,7 @@ int HTTPServer_process(HTTPServer *http)
         }
 
         if (status == 404)
-            HTTPResponse_get_404(&response);
+            HTTPResponse_error(&response, status, MSG_NOT_FOUND);
 
         if (HTTPResponse_send(&client, &response))
             fprintf(stderr, "%s Broken response:\n%s\n", ERROR, strerror(errno));
@@ -138,7 +135,7 @@ int HTTPServer_process(HTTPServer *http)
         HTTPResponse_clean(&response);
         HTTPRequest_clean(&request);
         ClientInterface_close(&client);
-        status = 1;
+        status = 404;
     }
     Server_stop(&http->tcp_server);
 }
@@ -220,6 +217,56 @@ int HTTPRequest_parse(HTTPRequest *request, const char *buffer)
     strncpy(request->body, buffer, substr_len);
     
     return 0;
+}
+
+int HTTPRequest_parse_get_args(const HTTPRequest *request, int *argc, char ***argv)
+{
+    if (request == NULL || argc == NULL || argv == NULL) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    *argc = 1;
+    size_t substr_len = strcspn(request->url, "?");
+    size_t req_len = strlen(request->url);
+    if (req_len - substr_len <= 1) {
+        *argv = malloc(sizeof(char *));
+        **argv = malloc(substr_len);
+        strncpy(**argv, request->url, substr_len);
+        return 0;
+    }
+    *argc = 2;
+    
+    const char *param_str = request->url + substr_len;
+    for (size_t i = 0; req_len > i && param_str[i] != 0; ++i)
+        *argc += param_str[i] == '&';
+
+    *argv = malloc(sizeof(char *) * (*argc));
+    **argv = malloc(substr_len);
+    strncpy(**argv, request->url, substr_len);
+    for (int i = 1; *argc > i; ++i) {
+        ++param_str;
+        
+        substr_len = strcspn(param_str, "&");
+
+        (*argv)[i] = malloc(substr_len + 2);
+        (*argv)[i][0] = '-';
+        (*argv)[i][1] = '-';
+        strncpy(&(*argv)[i][2], param_str, substr_len);
+        (*argv)[i][substr_len + 2] = 0;
+
+        param_str += substr_len;
+    }
+
+    return 0;
+}
+
+void HTTPRequest_delete_args(int argc, char **argv)
+{
+    for (int i = 0; argc > i; ++i)
+        free(argv[i]);
+
+    free(argv);
 }
 
 int HTTPRequest_clean(HTTPRequest *request)
@@ -329,6 +376,18 @@ int HTTPResponse_send(ClientInterface *client, const HTTPResponse *response)
     return 0;
 }
 
+void HTTPResponse_error(HTTPResponse *response, uint16_t status, const char *message)
+{
+    response->status = status;
+    response->version = "HTTP/1.1";
+    response->headers = NULL;
+
+    size_t length = strlen(message);
+    response->body = malloc(length);
+    strncpy(response->body, message, length);
+    HTTPHeader_add(&response->headers, 2, "Connection", "Closed", "Content-Type", "text/html");
+}
+
 void HTTPResponse_clean(HTTPResponse *response)
 {
     if (response == NULL)
@@ -364,16 +423,6 @@ LinkedList *LinkedList_last(const LinkedList *ll)
 {
     for (; ll->next != NULL; ll = ll->next);
     return ll;
-}
-
-void HTTPResponse_get_404(HTTPResponse *response)
-{
-    response->status = 404;
-    response->version = "HTTP/1.1";
-    response->body = malloc(sizeof(MSG_NOT_FOUND));
-    strcpy(response->body, MSG_NOT_FOUND);
-    response->headers = NULL;
-    HTTPHeader_add(&response->headers, 2, "Connection", "Closed", "Content-Type", "text/html");
 }
 
 void LinkedList_delete(LinkedList *ll, Deleter *deleter)
