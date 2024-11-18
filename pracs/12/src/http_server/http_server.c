@@ -173,18 +173,20 @@ int HTTPRequest_parse(HTTPRequest *request, const char *buffer)
             break;
         }
     }
+    memset(temp, 0, substr_len);
 
     // URL parsing
-    memset(temp, 0, substr_len);
     substr_len = strcspn(buffer, " ");
     request->url = malloc(substr_len);
     strncpy(request->url, buffer, substr_len);
+    request->url[substr_len] = 0;
     buffer += substr_len + 1;
 
     // HTTP versioin parsing
     substr_len = strcspn(buffer, "\r\n");
     request->http_version = malloc(substr_len);
     strncpy(request->http_version, buffer, substr_len);
+    request->http_version[substr_len] = 0;
     buffer += substr_len + 2;
     
     // Headers parsing
@@ -197,6 +199,7 @@ int HTTPRequest_parse(HTTPRequest *request, const char *buffer)
         
         memset(temp, 0, substr_len);
         strncpy((*new_header)->key, buffer, substr_len);
+        (*new_header)->key[substr_len] = 0;
         buffer += substr_len + 2;
 
         substr_len = strcspn(buffer, "\r\n");
@@ -204,6 +207,7 @@ int HTTPRequest_parse(HTTPRequest *request, const char *buffer)
         
         memset(temp, 0, substr_len);
         strncpy((*new_header)->value, buffer, substr_len);
+        (*new_header)->value[substr_len] = 0;
         buffer += substr_len + 2;
         
         new_header = &(*new_header)->next_header;
@@ -236,27 +240,32 @@ int HTTPRequest_parse_get_args(const HTTPRequest *request, int *argc, char ***ar
         return 0;
     }
     *argc = 2;
+    char *url_decoded = malloc(req_len);
+    memset(url_decoded, 0, req_len);
+    urldecode(url_decoded, req_len, request->url);
     
-    const char *param_str = request->url + substr_len;
+    const char *param_str = url_decoded + substr_len;
     for (size_t i = 0; req_len > i && param_str[i] != 0; ++i)
         *argc += param_str[i] == '&';
 
     *argv = malloc(sizeof(char *) * (*argc));
     **argv = malloc(substr_len);
-    strncpy(**argv, request->url, substr_len);
+    strncpy(**argv, url_decoded, substr_len);
+    (**argv)[substr_len] = 0;
     for (int i = 1; *argc > i; ++i) {
         ++param_str;
         
         substr_len = strcspn(param_str, "&");
 
         (*argv)[i] = malloc(substr_len + 2);
+        strncpy((*argv)[i] + 2, param_str, substr_len);
         (*argv)[i][0] = '-';
         (*argv)[i][1] = '-';
-        strncpy(&(*argv)[i][2], param_str, substr_len);
         (*argv)[i][substr_len + 2] = 0;
 
         param_str += substr_len;
     }
+    free(url_decoded);
 
     return 0;
 }
@@ -417,6 +426,78 @@ void HTTPHandle_delete(HTTPHandle *handle)
 void HTTPHandlerList_delete(HandlerList *handle_list)
 {
     free(handle_list);
+}
+
+int urldecode(char *out, size_t out_len, const char *in)
+{
+    static const char hex_table[256] = {
+        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+         0, 1, 2, 3, 4, 5, 6, 7,  8, 9,-1,-1,-1,-1,-1,-1,
+        -1,10,11,12,13,14,15,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+        -1,10,11,12,13,14,15,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1
+    };
+    char c, digit0, digit1, *beg = out;
+    if(in != NULL) {
+        size_t i = 0;
+        while((c = *in++) != '\0' && i < out_len) {
+            if(c == '%') {
+                if((digit0 = hex_table[(unsigned char)*in++]) < 0 || 
+                   (digit1 = hex_table[(unsigned char)*in++]) < 0) {
+                    *beg = '\0';
+                    return -1;
+                }
+                c = (digit0 << 4) | digit1;
+            }
+            *out++ = c;
+            ++i;
+        }
+    }
+    *out = '\0';
+    return 0;
+}
+
+int to_html_entities(char *out, size_t out_len, const char *in)
+{
+    size_t len = strlen(in);
+    for (size_t i = 0, o = 0; i < len && o < out_len; ++i) {
+        switch (in[i]) {
+            case '&':
+                memcpy(&out[i], HTML_AMP, sizeof(HTML_AMP));
+                o += sizeof(HTML_AMP) - 1;
+                break;
+            case '<':
+                memcpy(&out[i], HTML_LT, sizeof(HTML_LT));
+                o += sizeof(HTML_LT) - 1;
+                break;
+            case '>':
+                memcpy(&out[i], HTML_GT, sizeof(HTML_GT));
+                o += sizeof(HTML_GT) - 1;
+                break;
+            case '"':
+                memcpy(&out[i], HTML_QUOT, sizeof(HTML_QUOT));
+                o += sizeof(HTML_QUOT) - 1;
+                break;
+            case '\'':
+                memcpy(&out[i], HTML_APOS, sizeof(HTML_APOS));
+                o += sizeof(HTML_APOS) - 1;
+                break;
+            default:
+                out[i] = in[i];
+        }
+    }
+    return 0;
 }
 
 LinkedList *LinkedList_last(const LinkedList *ll)

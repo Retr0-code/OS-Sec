@@ -6,6 +6,11 @@
 
 #define HTTP_REQ_BUF_SIZE       4096
 #define HTTP_RES_BUF_LEN        4096
+#define HTML_AMP        "&amp;"
+#define HTML_LT         "&lt;"
+#define HTML_GT         "&gt;"
+#define HTML_QUOT       "&quot;"
+#define HTML_APOS       "&apos;"
 
 typedef enum
 {
@@ -112,4 +117,6 @@ void HTTPHandle_delete(HTTPHandle *handle);
 
 void HTTPHandlerList_delete(HandlerList *handle_list);
 
-// int HTTPServer_parse_request(HTTPServer *http, const char *data);
+int urldecode(char *out, size_t out_len, const char *in);
+
+int to_html_entities(char *out, size_t out_len, const char *in);

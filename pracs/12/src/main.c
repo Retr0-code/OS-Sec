@@ -55,7 +55,7 @@ int handler_get_root(const HTTPRequest *request, HTTPResponse *response)
     char *group = NULL;
     char *course = NULL;
 
-    static struct option long_options[] = {
+    struct option long_options[] = {
         {"full_name",   required_argument, 0, 0},
         {"group",       required_argument, 0, 1},
         {"course",      required_argument, 0, 2},
@@ -63,6 +63,7 @@ int handler_get_root(const HTTPRequest *request, HTTPResponse *response)
     };
 
     int option, option_index;
+    optind = 1;
     while ((option = getopt_long_only(argc, argv, "", long_options, &option_index)) != -1) {
         switch (option_index) {
             case 0:
@@ -95,7 +96,8 @@ int handler_get_root(const HTTPRequest *request, HTTPResponse *response)
 
     size_t total_size = template_size + strlen(request->url);
     response->body = malloc(total_size);
-    char *template = malloc(template_size);
+    char *template = malloc(template_size + 1);
+    memset(template, 0, template_size    + 1);
     if (fread(template, template_size, 1, template_file) != 1) {
         HTTPRequest_delete_args(argc, argv);
         fclose(template_file);
@@ -105,7 +107,7 @@ int handler_get_root(const HTTPRequest *request, HTTPResponse *response)
     fclose(template_file);
 
     snprintf(response->body, total_size, template, full_name, group, course);
-    response->content_length = total_size;
+    response->content_length = strlen(response->body);
 
     HTTPHeader_add(&response->headers, 1, "Content-Type", "text/html");
     HTTPRequest_delete_args(argc, argv);

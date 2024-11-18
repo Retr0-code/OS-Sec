@@ -23,6 +23,15 @@ set(SERVER_HEAD
     ${DIR_INCLUDE}/http_server/http_server.h
 )
 
+set(TEMPLATE ${PROJECT_SOURCE_DIR}/get_root_template.form.html)
+set(TEMPLATES_PATH static/templates)
+set(EMBLEM ${PROJECT_SOURCE_DIR}/emblem.jpeg)
+set(IMAGES_PATH static/images)
+
+file(MAKE_DIRECTORY ${IMAGES_PATH} ${TEMPLATES_PATH})
+file(COPY ${TEMPLATE} DESTINATION ${TEMPLATES_PATH})
+file(COPY ${EMBLEM} DESTINATION ${IMAGES_PATH})
+
 add_library(server STATIC ${SERVER_SRC})
 target_include_directories(server PUBLIC ${PROJECT_SOURCE_DIR}/include)
 add_executable(server_example ${DIR_SOURCE}/main.c)
