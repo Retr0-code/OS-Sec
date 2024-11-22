@@ -1,0 +1,55 @@
+#ifndef MYSYSLOG_BACK_H
+#error "This file should not be used directly. Use mysyslog API function instead"
+#endif
+
+#include <stdlib.h>
+#include <unistd.h>
+
+#include "mysyslog.h"
+
+#define LOGS_FILE_FLAGS O_CREAT | O_WRONLY | O_APPEND
+#define LOGS_FILE_PERMS 0660
+
+typedef struct {
+    int         enum_val;
+    const char *str;
+} enum_str_pair;
+
+enum_str_pair driver_so_filename_str[] = {
+    { drv_ascii,    "libmysyslog-text.so" },
+    { drv_json,     "libmysyslog-json.so" },
+};
+unsigned long int driver_so_filename_amount = sizeof(driver_so_filename_str) / sizeof(*driver_so_filename_str);
+
+enum_str_pair level_str[] = {
+    { loglvl_DEBUG,     "DEBUG" },
+    { loglvl_INFO,      "INFO" },
+    { loglvl_WARN,      "WARN" },
+    { loglvl_ERROR,     "ERROR" },
+    { loglvl_CRITICAL,  "CRITICAL" }
+};
+unsigned long int levels_amount = sizeof(level_str) / sizeof(*level_str);
+
+enum_str_pair format_str[] = {
+    { fmt_none, "" },
+    { fmt_txt,  ".txt" },
+    { fmt_log,  ".log" },
+    { fmt_json, ".json" },
+};
+unsigned long int formats_amount = sizeof(format_str) / sizeof(*format_str);
+
+const char *str_from_enum(int enum_val, enum_str_pair *array, size_t array_size) {
+    const char *str = NULL;
+    for (size_t i = 0; i < array_size; ++i) {
+        if (enum_val == array[i].enum_val) {
+            str = array[i].str;
+            break;
+        }
+    }
+    return str;
+}
+
+void get_process_name(char *path, size_t pathlen) {
+    memset(path, 0, pathlen);
+    readlink("/proc/self/exe", path, pathlen);
+}
