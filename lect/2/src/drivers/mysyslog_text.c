@@ -12,7 +12,7 @@ extern int mysyslog_back(const char *msg, const char *level, const char *applica
     if (fd == -1)
         return slerror_invalid_args;
 
-    lseek(fd, 0, SEEK_END);
+    fseek(fd, 0, SEEK_END);
     if (dprintf(fd, "%lu %s %s: %s\n", time(NULL), level, application, msg) < 0) {
         close(fd);
         return slerror_bad_descriptor;
