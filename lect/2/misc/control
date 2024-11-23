@@ -1,0 +1,10 @@
+Package: mysyslog
+Version: 1.0
+Architecture: amd64
+Maintainer: Debian mysyslog <github.com/Retr0-code>
+Depends: libc6
+Suggests: logging
+Section: utils
+Priority: optional
+Multi-Arch: foreign
+Description: Simple logging library and daemon.
