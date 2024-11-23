@@ -9,7 +9,8 @@
 
 #include "mysyslog.h"
 
-#define LOGS_FILE_FLAGS O_CREAT | O_WRONLY | O_APPEND
+#define LOGS_FILE_FLAGS O_CREAT | O_WRONLY
+// #define LOGS_FILE_FLAGS O_CREAT | O_WRONLY | O_APPEND
 #define LOGS_FILE_PERMS 0660
 
 typedef struct {

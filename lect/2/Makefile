@@ -14,7 +14,7 @@ DIR_DEBIAN_LIB	:= $(DIR_BUILD)/lib$(PKG_NAME)-$(PKG_VERSION)
 DIR_DEBIAN_CL	:= $(DIR_BUILD)/$(PKG_NAME)-client-$(PKG_VERSION)
 DIR_DEBIAN_D	:= $(DIR_BUILD)/$(PKG_NAME)d-$(PKG_VERSION)
 
-CFLAGS          := -I$(DIR_INCLUDE) -DUSE_BACKEND_MYSYSLOG
+CCFLAGS         := -I$(DIR_INCLUDE) -DUSE_BACKEND_MYSYSLOG
 CLIENT_SRC      := $(DIR_SRC)/mysyslog_client.c
 CLIENT_OUT      := $(DIR_BUILD)/mysyslog-client
 DAEMON_SRC      := $(DIR_SRC)/mysyslog_daemon.c
@@ -22,7 +22,7 @@ DAEMON_OUT      := $(DIR_BUILD)/mysyslogd
 MYSYSLOG_SRC    := $(DIR_SRC)/mysyslog.c
 MYSYSLOG_OUT    := $(DIR_BUILD)/drivers/libmysyslog.so
 
-DRIVERS_CFLAGS  := -I$(DIR_INCLUDE) -fPIC -DUSE_BACKEND_MYSYSLOG -shared
+DRIVERS_CCFLAGS := -I$(DIR_INCLUDE) -fPIC -DUSE_BACKEND_MYSYSLOG -shared
 DRIVERS_SRCS    := $(wildcard $(DIR_SRC)/drivers/*.c)
 DRIVERS_SO		:= $(patsubst $(DIR_SRC)/drivers/%.c, $(DIR_BUILD)/drivers/lib%.so, $(DRIVERS_SRCS))
 
@@ -33,14 +33,18 @@ install: install_lib
 	sudo dpkg -i $(DIR_DEBIAN_D).deb
 	sudo dpkg -i $(DIR_DEBIAN_CL).deb
 
-install_lib:
+debug: CCFLAGS += -DDEBUG -ggdb
+debug: DRIVERS_CCFLAGS += -DDEBUG -ggdb
+debug: all
+
+install_lib: libmysyslog_deb
 	sudo dpkg -i $(DIR_DEBIAN_LIB).deb
 
 client: install_lib
-	@cc $(CFLAGS) -o $(CLIENT_OUT) $(CLIENT_SRC) -lmysyslog
+	@cc $(CCFLAGS) -o $(CLIENT_OUT) $(CLIENT_SRC) -lmysyslog
 
 daemon: install_lib
-	@cc $(CFLAGS) -o $(DAEMON_OUT) $(DAEMON_SRC) -lmysyslog
+	@cc $(CCFLAGS) -o $(DAEMON_OUT) $(DAEMON_SRC) -lmysyslog
 
 deb: libmysyslog_deb mysyslogd_deb mysyslog-client_deb
 
@@ -66,12 +70,12 @@ libmysyslog_deb: create_dirs drivers libmysyslog
 	dpkg-deb --root-owner-group --build $(DIR_DEBIAN_LIB)
 
 libmysyslog: create_dirs
-	@cc $(DRIVERS_CFLAGS) -o $(MYSYSLOG_OUT) $(MYSYSLOG_SRC)
+	@cc $(DRIVERS_CCFLAGS) -o $(MYSYSLOG_OUT) $(MYSYSLOG_SRC)
 
 drivers: $(DRIVERS_SO)
 
 $(DIR_BUILD)/drivers/lib%.so: $(DIR_SRC)/drivers/%.c
-	@cc $(DRIVERS_CFLAGS) -o $@ $<
+	@cc $(DRIVERS_CCFLAGS) -o $@ $<
 
 create_dirs:
 	@mkdir -p $(DIR_BUILD)/drivers

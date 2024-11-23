@@ -9,6 +9,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <mysyslog.h>
 #include <mysyslog_back.h>
@@ -29,11 +31,11 @@ typedef struct {
 static settings daemon_settings = { -1, -1, NULL };
 
 static const char *messages[] = {
-    "Message1",
-    "Message2",
-    "Message3",
-    "Message4",
-    "Message5"
+    "Important message",
+    "Another message",
+    "Yet still working",
+    "Processing...",
+    "This is a message too"
 };
 size_t messages_amount = sizeof(messages) / sizeof(*messages);
 
@@ -41,7 +43,11 @@ void signal_handler_terminate(int signal);
 
 int read_config(void);
 
+void daemonize(void);
+
 int main(int argc, char **argv) {
+    daemonize();
+
     signal(SIGTERM, signal_handler_terminate);
     signal(SIGINT,  signal_handler_terminate);
     signal(SIGKILL, signal_handler_terminate);
@@ -52,9 +58,9 @@ int main(int argc, char **argv) {
     printf("Starting using driver=%i, format=%i, path=%s\n",
         daemon_settings.driver, daemon_settings.format, daemon_settings.path);
 
-    time_t start = time(NULL), now = 0;
+    time_t start = time(NULL), now = time(NULL);
     while (1) {
-        if (start - now >= 30) {
+        if (now - start >= 30) {
             start = now;
             srand(now);
             int num = rand();
@@ -169,3 +175,40 @@ int read_config(void) {
     return 0;
 }
 
+void daemonize(void) {
+    pid_t pid = fork();
+    if (pid < 0)
+        exit(-1);
+    else if (pid > 0)
+        exit(0);
+
+    if (setsid() == -1)
+        exit(errno);
+    
+    pid = fork();
+    if (pid < 0)
+        exit(-1);
+    else if (pid > 0){
+        FILE *pidfile = fopen(PID_FILE, "w");
+        if (pidfile == NULL)
+            exit(-1);
+
+        fprintf(pidfile, "%i", pid);
+        fclose(pidfile);
+        
+        exit(0);
+    }
+
+    chdir("/");
+
+    for(int fd = sysconf(_SC_OPEN_MAX); fd > 0; fd--)
+		close(fd);
+
+    fclose(stdin);
+	fclose(stdout);
+	fclose(stderr);
+
+	stdin = fopen("/dev/null", "r");
+	stdout = fopen("/dev/null", "w");
+	stderr = fopen("/dev/null", "w");
+}

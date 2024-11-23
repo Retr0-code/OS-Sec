@@ -12,11 +12,22 @@ extern int mysyslog_back(const char *msg, const char *level, const char *applica
     if (fd == -1)
         return slerror_invalid_args;
 
-    lseek(fd, 0, SEEK_END);
+    size_t file_size = lseek(fd, 0, SEEK_END);
+    printf("size:%i\n", file_size);
+
+    if (file_size == 0)
+        write(fd, "[ ", 2);
+    else {
+        lseek(fd, file_size - 2, SEEK_SET);
+        write(fd, ", ", 2);
+    }
+
     if (dprintf(fd, "{\"timestamp\": %lu, \"log_level\": \"%s\", \"process\": \"%s\", \"message\": \"%s\"}", time(NULL), level, application, msg) < 0) {
+        write(fd, " ]", 2);
         close(fd);
         return slerror_bad_descriptor;
     }
+    write(fd, " ]", 2);
 
     close(fd);
     return slerror_success;
