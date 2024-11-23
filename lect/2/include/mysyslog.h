@@ -53,6 +53,6 @@ typedef enum {
  *  @param path     path to output log file;
  *  @returns On error returns a non-0 value from `e_syslog_error` and sets `errno` appropriately; 
  */
-int mysyslog(const char *msg, int level, int driver, int format, const char *path);
+extern int mysyslog(const char *msg, int level, int driver, int format, const char *path);
 
 #endif
