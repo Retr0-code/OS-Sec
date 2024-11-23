@@ -1,6 +1,7 @@
 /** @file mysyslog_daemon.c
  *  @brief daemon executable for libmysyslog library
  */
+#include <time.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,11 +26,18 @@ typedef struct {
     char        *path;
 } settings;
 
-static settings daemon_settings;
+static settings daemon_settings = { -1, -1, NULL };
+
+static const char *messages[] = {
+    "Message1",
+    "Message2",
+    "Message3",
+    "Message4",
+    "Message5"
+};
+size_t messages_amount = sizeof(messages) / sizeof(*messages);
 
 void signal_handler_terminate(int signal);
-
-void show_info(int signal);
 
 int read_config(void);
 
@@ -37,17 +45,41 @@ int main(int argc, char **argv) {
     signal(SIGTERM, signal_handler_terminate);
     signal(SIGINT,  signal_handler_terminate);
     signal(SIGKILL, signal_handler_terminate);
-    signal(SIGINFO, show_info);
 
     if (read_config() != 0)
         return ENOENT;
 
-    printf("%i %i %s\n", daemon_settings.driver, daemon_settings.format, daemon_settings.path);
+    printf("Starting using driver=%i, format=%i, path=%s\n",
+        daemon_settings.driver, daemon_settings.format, daemon_settings.path);
 
+    time_t start = time(NULL), now = 0;
+    while (1) {
+        if (start - now >= 30) {
+            start = now;
+            srand(now);
+            int num = rand();
+            int level = num % levels_amount;
+            const char *msg = messages[num % messages_amount];
+            
+            int status = 0;
+            if ((status = mysyslog(msg, level, 
+                daemon_settings.driver,
+                daemon_settings.format,
+                daemon_settings.path)) != slerror_success) {
+                return status;
+            }
+        }
+        now = time(NULL);
+    }
+
+    free(daemon_settings.path);
     return 0;
 }
 
 void signal_handler_terminate(int signal) {
+    if (daemon_settings.path)
+        free(daemon_settings.path);
+    
     switch (signal) {
         case SIGTERM:
             exit(0);
@@ -58,10 +90,6 @@ void signal_handler_terminate(int signal) {
         default:
             exit(-1);
     }
-}
-
-void show_info(int signal) {
-    return ;
 }
 
 int read_config(void) {
