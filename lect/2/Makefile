@@ -30,11 +30,11 @@ DRIVERS_SO		:= $(patsubst $(DIR_SRC)/drivers/%.c, $(DIR_BUILD)/drivers/lib%.so, 
 all: create_dirs drivers libmysyslog deb install_lib client daemon install
 
 install: install_lib
-	sudo dpkg -i $(DIR_BUILD)/$(PKG_NAME)d-$(PKG_VERSION).deb
-	sudo dpkg -i $(DIR_BUILD)/$(PKG_NAME)-client-$(PKG_VERSION).deb
+	sudo dpkg -i $(DIR_DEBIAN_D).deb
+	sudo dpkg -i $(DIR_DEBIAN_CL).deb
 
 install_lib:
-	sudo dpkg -i $(DIR_BUILD)/lib$(PKG_NAME)-$(PKG_VERSION).deb
+	sudo dpkg -i $(DIR_DEBIAN_LIB).deb
 
 client: install_lib
 	@cc $(CFLAGS) -o $(CLIENT_OUT) $(CLIENT_SRC) -lmysyslog
@@ -45,31 +45,25 @@ daemon: install_lib
 deb: libmysyslog_deb mysyslogd_deb mysyslog-client_deb
 
 mysyslog-client_deb: libmysyslog_deb client
-	@mkdir -p $(DIR_DEBIAN_CL)/DEBIAN
 	@mkdir -p $(DIR_DEBIAN_CL)$(DIR_BIN)
-	@cp $(DIR_MISC)/$(PKG_NAME)-client_control $(DIR_DEBIAN_CL)/DEBIAN/control
+	@cp -r $(DIR_MISC)/$(PKG_NAME)-client/* $(DIR_DEBIAN_CL)
 	@cp $(DIR_BUILD)/$(PKG_NAME)-client $(DIR_DEBIAN_CL)$(DIR_BIN)
-	dpkg-deb --root-owner-group --build $(DIR_BUILD)/$(PKG_NAME)-client-$(PKG_VERSION)
-
+	dpkg-deb --root-owner-group --build $(DIR_DEBIAN_CL)
 
 mysyslogd_deb: libmysyslog_deb daemon
-	@mkdir -p $(DIR_DEBIAN_D)/DEBIAN
 	@mkdir -p $(DIR_DEBIAN_D)$(DIR_SUDO)
-	@cp $(DIR_MISC)/$(PKG_NAME)d_control $(DIR_DEBIAN_D)/DEBIAN/control
+	@cp -r $(DIR_MISC)/$(PKG_NAME)d/* $(DIR_DEBIAN_D)
 	@cp $(DIR_BUILD)/$(PKG_NAME)d $(DIR_DEBIAN_D)$(DIR_SUDO)
-	dpkg-deb --root-owner-group --build $(DIR_BUILD)/$(PKG_NAME)d-$(PKG_VERSION)
+	dpkg-deb --root-owner-group --build $(DIR_DEBIAN_D)
 
 libmysyslog_deb: create_dirs drivers libmysyslog
-	@mkdir -p $(DIR_DEBIAN_LIB)/DEBIAN
-	@mkdir -p $(DIR_DEBIAN_LIB)/$(DIR_SYSTEMD)
 	@mkdir -p $(DIR_DEBIAN_LIB)/$(DIR_LIB)
 	@mkdir -p $(DIR_DEBIAN_LIB)/$(DIR_HEADERS)
-	@cp $(DIR_MISC)/libmysyslog_control $(DIR_DEBIAN_LIB)/DEBIAN/control
-	@cp $(DIR_MISC)/mysyslog.service $(DIR_DEBIAN_LIB)/$(DIR_SYSTEMD)
+	@cp -r $(DIR_MISC)/lib$(PKG_NAME)/* $(DIR_DEBIAN_LIB)
 	@cp $(DIR_BUILD)/drivers/*.so $(DIR_DEBIAN_LIB)/$(DIR_LIB)
 	@cp $(DIR_INCLUDE)/mysyslog.h $(DIR_DEBIAN_LIB)/$(DIR_HEADERS)
 	@cp $(DIR_INCLUDE)/mysyslog_back.h $(DIR_DEBIAN_LIB)/$(DIR_HEADERS)
-	dpkg-deb --root-owner-group --build $(DIR_BUILD)/lib$(PKG_NAME)-$(PKG_VERSION)
+	dpkg-deb --root-owner-group --build $(DIR_DEBIAN_LIB)
 
 libmysyslog: create_dirs
 	@cc $(DRIVERS_CFLAGS) -o $(MYSYSLOG_OUT) $(MYSYSLOG_SRC)
