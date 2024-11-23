@@ -18,10 +18,16 @@ typedef struct {
 } enum_str_pair;
 
 enum_str_pair driver_so_filename_str[] = {
-    { drv_ascii,    "./drivers/libmysyslog_text.so" },
-    { drv_json,     "./drivers/libmysyslog_json.so" },
+    { drv_ascii,    "libmysyslog_text.so" },
+    { drv_json,     "libmysyslog_json.so" },
 };
 unsigned long int driver_so_filename_amount = sizeof(driver_so_filename_str) / sizeof(enum_str_pair);
+
+enum_str_pair driver_names[] = {
+    { drv_ascii,    "ascii" },
+    { drv_json,     "json" }
+};
+unsigned long int driver_names_len = sizeof(driver_names) / sizeof(enum_str_pair);
 
 enum_str_pair level_str[] = {
     { loglvl_DEBUG,     "DEBUG" },

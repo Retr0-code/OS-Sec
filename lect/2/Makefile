@@ -13,6 +13,8 @@ DIR_DEBIAN		:= $(DIR_BUILD)/$(PKG_NAME)-$(PKG_VERSION)
 CFLAGS          := -I$(DIR_INCLUDE) -DUSE_BACKEND_MYSYSLOG
 CLIENT_SRC      := $(DIR_SRC)/mysyslog_client.c
 CLIENT_OUT      := $(DIR_BUILD)/mysyslog-client
+DAEMON_SRC      := $(DIR_SRC)/mysyslog_daemon.c
+DAEMON_OUT      := $(DIR_BUILD)/mysyslogd
 MYSYSLOG_SRC    := $(DIR_SRC)/mysyslog.c
 MYSYSLOG_OUT    := $(DIR_BUILD)/drivers/libmysyslog.so
 
@@ -21,13 +23,16 @@ DRIVERS_SRCS    := $(wildcard $(DIR_SRC)/drivers/*.c)
 DRIVERS_SO		:= $(patsubst $(DIR_SRC)/drivers/%.c, $(DIR_BUILD)/drivers/lib%.so, $(DRIVERS_SRCS))
 
 
-all: create_dirs drivers libmysyslog deb
+all: create_dirs drivers libmysyslog deb install client daemon
 
 install:
 	sudo dpkg -i $(DIR_BUILD)/$(PKG_NAME)-$(PKG_VERSION).deb
 
 client: install
 	@cc $(CFLAGS) -o $(CLIENT_OUT) $(CLIENT_SRC) -lmysyslog
+
+daemon: install
+	@cc $(CFLAGS) -ggdb -o $(DAEMON_OUT) $(DAEMON_SRC) -lmysyslog
 
 deb: create_dirs drivers libmysyslog
 	@mkdir -p $(DIR_DEBIAN)/DEBIAN
@@ -38,6 +43,7 @@ deb: create_dirs drivers libmysyslog
 	@cp $(DIR_BUILD)/drivers/*.so $(DIR_DEBIAN)/$(DIR_LIB)
 	@mkdir -p $(DIR_DEBIAN)/$(DIR_HEADERS)
 	@cp $(DIR_INCLUDE)/mysyslog.h $(DIR_DEBIAN)/$(DIR_HEADERS)
+	@cp $(DIR_INCLUDE)/mysyslog_back.h $(DIR_DEBIAN)/$(DIR_HEADERS)
 	dpkg-deb --root-owner-group --build $(DIR_BUILD)/$(PKG_NAME)-$(PKG_VERSION)
 
 libmysyslog: create_dirs
