@@ -13,8 +13,6 @@ extern int mysyslog_back(const char *msg, const char *level, const char *applica
         return slerror_invalid_args;
 
     size_t file_size = lseek(fd, 0, SEEK_END);
-    printf("size:%i\n", file_size);
-
     if (file_size == 0)
         write(fd, "[ ", 2);
     else {
